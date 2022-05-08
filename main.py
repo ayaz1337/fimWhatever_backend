@@ -13,7 +13,6 @@ import re
 from odd_jobs import compare_db, compare_db_gin
 from verify import scan_baseline
 import sys
-from termcolor import colored
 # from AES_CBC import encrypt
 import signal
 
@@ -73,13 +72,30 @@ class users(db.DynamicDocument):
     pass
 
 
+
+email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
+id_regex = r'[A-Fa-f0-9]{24}'
+
+def drop_collections():
+    try:
+        baseline.objects().delete()
+        baseline_bak.objects().delete()
+        alertlog.objects().delete()
+        syslog.objects().delete()
+        analytics.objects().delete()
+        chart.objects().delete()
+    except: 
+        return False
+    else: 
+        return True
+
+drop_collections()
+
 analytics(**{'type': 'baseline', 'count': 0}).save()
 analytics(**{'type': 'scans', 'count': 0}).save()
 analytics(**{'type': 'alerts', 'count': 0}).save()
 analytics(**{'type': 'encrypts', 'count': 0}).save()
-
-email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 
 def validate_login(f):
     @wraps(f)
@@ -131,6 +147,7 @@ def token_required(f):
 def post_verifyuserlogin():
     if 'sess_id' in session:
         if [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'user':
+    
             return({"ack": "authorized"})
         elif [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'root':
             return jsonify({"error": "Unauthorized"}), 401
@@ -237,6 +254,10 @@ def post_baseline():
     req = request.get_json()
     if not req:
         return jsonify({"error": "Invalid input"}), 400
+    print(req['paths'])
+    if not req['paths']:
+        return jsonify({"error": "Invalid input"}), 400
+
     paths = req['paths']
     base = []
     files = []
@@ -251,6 +272,8 @@ def post_baseline():
         else:
             return jsonify({"error": "Invalid file or directory"}), 400
     base = list(set(base))                
+
+    print(base)
 
     for file in base:
         f = open(file, 'rb')
@@ -276,8 +299,13 @@ def post_baseline():
 
         if(compare_db(data, baseline)):
             baseline(**data).save()
-            files.append(data)        
+            files.append(data)
 
+    analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
+    backup_baseline()
+    return jsonify({"ack": "Baseline successfully added"})    
+
+def backup_baseline():
     count = 0
     for obj in baseline.objects():
         count = count + 1
@@ -293,9 +321,7 @@ def post_baseline():
         
         if compare_db_gin(data_alt, baseline_bak):
             baseline_bak(**data_alt).save()
-
-    analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
-    return jsonify(files)    
+    return None
 
 @app.route('/api/baseline', methods=['GET'])
 @token_required
@@ -320,22 +346,24 @@ def get_baseline():
 @token_required
 def get_baseline_bak():
     files = []
+    if len(baseline_bak.objects()) > 0:
+        for doc in baseline_bak.objects():
+            item={}
+            item['file_id'] = doc['file_id']
+            item['file'] = doc['file']
+            item['panel_id'] = doc['panel_id']
+            item['file_size'] = doc['file_size']
+            item['hash'] = doc['hash']
+            item['status'] = doc['status']
+            item['enc_status'] = doc['enc_status']
+            item['createdate'] = datetime.fromtimestamp(doc['createdate']).strftime('%d-%b-%Y %H:%M:%S')
+            item['modifydate'] = datetime.fromtimestamp(doc['modifydate']).strftime('%d-%b-%Y %H:%M:%S')
 
-    for doc in baseline_bak.objects():
-        item={}
-        item['file_id'] = doc['file_id']
-        item['file'] = doc['file']
-        item['panel_id'] = doc['panel_id']
-        item['file_size'] = doc['file_size']
-        item['hash'] = doc['hash']
-        item['status'] = doc['status']
-        item['enc_status'] = doc['enc_status']
-        item['createdate'] = datetime.fromtimestamp(doc['createdate']).strftime('%d-%b-%Y %H:%M:%S')
-        item['modifydate'] = datetime.fromtimestamp(doc['modifydate']).strftime('%d-%b-%Y %H:%M:%S')
+            files.append(item)
 
-        files.append(item)
-
-    return jsonify(files)  
+        return jsonify(files)
+    else:
+        return jsonify({"error": "No baseline found"}), 400      
 
 @app.route('/api/verify', methods=['POST'])
 @token_required
@@ -356,8 +384,10 @@ def post_verify():
     else:
         stop_cron()
 
-    response = jsonify(files)
-    return response 
+    if files == 0:
+        return jsonify({"error": "No baseline found"}), 400
+    
+    return jsonify({"ack": "Configuration complete"}) 
 
 def start_cron():
     if (cron.get_job('verify')):
@@ -376,7 +406,7 @@ def verify():
         analytics.objects(type='scans').update(**{'count': [doc['count'] for doc in analytics.objects(type='scans')][0]+1})
         return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, chart, CONFIG['buff_size'], SETTINGS['alert'])
     else:
-        return "Nothing to scan"        
+        return 0
 
 def make_chart():
     item = {}
@@ -431,30 +461,38 @@ def get_chart():
         
     return jsonify(files)
 
-def drop_collections():
-    try:
-        baseline.objects().delete()
-        baseline_bak.objects().delete()
-        alertlog.objects().delete()
-        syslog.objects().delete()
-        analytics.objects().delete()
-        chart.objects().delete()
-    except: 
-        return False
-    else: 
-        return True    
+@app.route('/api/removebaseline', methods=['POST'])
+@token_required
+def post_removebaseline():
+    req = request.get_json()
+
+    if not req:
+        return jsonify({"error": "Invalid file id"}), 400
+
+    id = req['id']
+    
+    if not re.fullmatch(id_regex, id):
+        return jsonify({"error": " file id must be a 12-byte input or a 24-character hex string"}), 400
+
+
+    if not baseline.objects(id=id):
+        return jsonify({"error": "Invalid file id"}), 400
+
+    baseline.objects(id=id).delete()
+    baseline_bak.objects(file_id=id).delete()
+    analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
+
+    return jsonify({"ack": "Baseline removed successfully"})    
+
 
 def signal_handler(sig, frame):
     if drop_collections():
         print()
-        print(colored('Shutting Down the Server...', 'yellow'))
-        print(colored('Dropping Unecessary Collections...', 'red'))
-        print(colored('Good Bye!', 'green'))
+        print("Good Bye!")
         sys.exit(0)
 
+
 if __name__ == '__main__':
-    # drop_collections()
-    signal.signal(signal.SIGINT, signal_handler)
     app.run(host=CONFIG['host'], port=CONFIG['port'], debug=True)
 
 

@@ -35,6 +35,7 @@ def compare_db_gin(data, db):
         db_data['panel_id'] = doc['panel_id']
 
         comp = list(diff(data, db_data))
+        print(comp)
         print()
         if not comp:
             save = False
