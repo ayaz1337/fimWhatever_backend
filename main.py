@@ -10,7 +10,7 @@ from flask_bcrypt import Bcrypt
 from flask_session import Session
 from functools import wraps
 import re
-from odd_jobs import compare_db, compare_db_gin
+from odd_jobs import compare_db, compare_db_gin, drop_collection, set_analyticsTozero
 from verify import scan_baseline
 import sys
 # from AES_CBC import encrypt
@@ -29,7 +29,8 @@ SETTINGS = {
     'alert': "False",
     "manual": "False",
     "cron": "False",
-    "interval": 86400
+    "interval": 86400,
+    "wait": False
 }
 
 app = Flask(__name__)
@@ -77,25 +78,22 @@ email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 id_regex = r'[A-Fa-f0-9]{24}'
 
-def drop_collections():
-    try:
-        baseline.objects().delete()
-        baseline_bak.objects().delete()
-        alertlog.objects().delete()
-        syslog.objects().delete()
-        analytics.objects().delete()
-        chart.objects().delete()
-    except: 
-        return False
-    else: 
-        return True
-
-drop_collections()
+drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects])
 
 analytics(**{'type': 'baseline', 'count': 0}).save()
 analytics(**{'type': 'scans', 'count': 0}).save()
 analytics(**{'type': 'alerts', 'count': 0}).save()
 analytics(**{'type': 'encrypts', 'count': 0}).save()
+
+
+def is_working(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        if SETTINGS["wait"]:
+            return ({"error": "Wait for the baselines to be uploaded"}), 400
+        else:
+            return f(*args, **kwargs)
+    return decorator    
 
 def validate_login(f):
     @wraps(f)
@@ -125,7 +123,7 @@ def validate_signup(f):
                     return jsonify({"error": "User already exist with the same email"}), 409    
 
                 if not re.fullmatch(pw_regex, req['password']):
-                    return jsonify({"error": "Password should be at least 4 characters long"}), 400
+                    return jsonify({"error": "Icorrect password format"}), 400
 
                 if req['password'] != req['confirm_password']:
                     return jsonify({"error": "Passwords do not match"}), 400
@@ -249,18 +247,23 @@ def get_users():
     return jsonify(user_data)
 
 @app.route('/api/baseline', methods=['POST'])
+@is_working
 @token_required
 def post_baseline():
+    SETTINGS["wait"] = True
     req = request.get_json()
     if not req:
+        SETTINGS["wait"] = False
         return jsonify({"error": "Invalid input"}), 400
     print(req['paths'])
     if not req['paths']:
+        SETTINGS["wait"] = False
         return jsonify({"error": "Invalid input"}), 400
 
     paths = req['paths']
     base = []
     files = []
+    dirs = []
 
     for path in paths:
         if os.path.isfile(path):
@@ -268,14 +271,15 @@ def post_baseline():
         elif os.path.isdir(path):
             for dirName, subdirList, fileList in os.walk(path):
                 for file in glob.glob(os.path.join(dirName, '*')):
-                    base.append(file)
+                    if os.path.isfile(file):
+                        base.append(file)
         else:
+            SETTINGS["wait"] = False
             return jsonify({"error": "Invalid file or directory"}), 400
     base = list(set(base))                
 
-    print(base)
-
     for file in base:
+        print(file)
         f = open(file, 'rb')
         try:
             sha256 = hashlib.sha256()
@@ -303,6 +307,7 @@ def post_baseline():
 
     analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
     backup_baseline()
+    SETTINGS["wait"] = False
     return jsonify({"ack": "Baseline successfully added"})    
 
 def backup_baseline():
@@ -343,29 +348,28 @@ def get_baseline():
     return jsonify(files)
 
 @app.route('/api/baseline_bak', methods=['GET'])
+@is_working
 @token_required
 def get_baseline_bak():
     files = []
-    if len(baseline_bak.objects()) > 0:
-        for doc in baseline_bak.objects():
-            item={}
-            item['file_id'] = doc['file_id']
-            item['file'] = doc['file']
-            item['panel_id'] = doc['panel_id']
-            item['file_size'] = doc['file_size']
-            item['hash'] = doc['hash']
-            item['status'] = doc['status']
-            item['enc_status'] = doc['enc_status']
-            item['createdate'] = datetime.fromtimestamp(doc['createdate']).strftime('%d-%b-%Y %H:%M:%S')
-            item['modifydate'] = datetime.fromtimestamp(doc['modifydate']).strftime('%d-%b-%Y %H:%M:%S')
-
-            files.append(item)
-
-        return jsonify(files)
-    else:
-        return jsonify({"error": "No baseline found"}), 400      
+    for doc in baseline_bak.objects():
+        item={}
+        item['file_id'] = doc['file_id']
+        item['file'] = doc['file']
+        item['panel_id'] = doc['panel_id']
+        item['file_size'] = doc['file_size']
+        item['hash'] = doc['hash']
+        item['status'] = doc['status']
+        item['enc_status'] = doc['enc_status']
+        item['createdate'] = datetime.fromtimestamp(doc['createdate']).strftime('%d-%b-%Y %H:%M:%S')
+        item['modifydate'] = datetime.fromtimestamp(doc['modifydate']).strftime('%d-%b-%Y %H:%M:%S')
+        
+        files.append(item)
+    
+    return jsonify(files)      
 
 @app.route('/api/verify', methods=['POST'])
+@is_working
 @token_required
 def post_verify():
     req = request.get_json()
@@ -462,6 +466,7 @@ def get_chart():
     return jsonify(files)
 
 @app.route('/api/removebaseline', methods=['POST'])
+@is_working
 @token_required
 def post_removebaseline():
     req = request.get_json()
@@ -483,6 +488,21 @@ def post_removebaseline():
     analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
 
     return jsonify({"ack": "Baseline removed successfully"})    
+
+@app.route('/api/removeall', methods=['POST'])
+@is_working
+@token_required
+def post_removeall():
+    try:
+        base = baseline.objects
+        if not base:
+            raise Exception()
+    except Exception:
+        return jsonify({"error": "No baseline found"}), 400
+    else:
+        drop_collection([base, baseline_bak.objects, chart.objects])
+        set_analyticsTozero(analytics.objects)
+        return jsonify({"ack": "All baselines are removed successfully"}) 
 
 
 def signal_handler(sig, frame):

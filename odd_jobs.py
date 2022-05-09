@@ -35,8 +35,6 @@ def compare_db_gin(data, db):
         db_data['panel_id'] = doc['panel_id']
 
         comp = list(diff(data, db_data))
-        print(comp)
-        print()
         if not comp:
             save = False
             break
@@ -66,3 +64,17 @@ def compare_hash(hash_fs, hash_db):
         return 2
     else:
         return 3
+
+
+
+def drop_collection(arr):
+    for db in arr:
+        db.delete()        
+
+def set_analyticsTozero(anal):
+    anal(type='baseline').update(**{'count': 0})   
+    anal(type='alerts').update(**{'count': 0})
+    anal(type='scans').update(**{'count': 0})   
+    anal(type='encs').update(**{'count': 0})   
+
+
