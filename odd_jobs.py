@@ -72,9 +72,6 @@ def drop_collection(arr):
         db.delete()        
 
 def set_analyticsTozero(anal):
-    anal(type='baseline').update(**{'count': 0})   
-    anal(type='alerts').update(**{'count': 0})
-    anal(type='scans').update(**{'count': 0})   
-    anal(type='encs').update(**{'count': 0})   
+    anal.update(**{'baseline': 0, 'alerts': 0, 'scans': 0, 'encs': 0})   
 
 

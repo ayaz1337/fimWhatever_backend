@@ -78,12 +78,9 @@ email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 id_regex = r'[A-Fa-f0-9]{24}'
 
-drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects])
+drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
 
-analytics(**{'type': 'baseline', 'count': 0}).save()
-analytics(**{'type': 'scans', 'count': 0}).save()
-analytics(**{'type': 'alerts', 'count': 0}).save()
-analytics(**{'type': 'encrypts', 'count': 0}).save()
+analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0}).save()
 
 
 def is_working(f):
@@ -305,7 +302,7 @@ def post_baseline():
             baseline(**data).save()
             files.append(data)
 
-    analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
+    analytics.objects().update(**{'baseline': len(baseline.objects())})   
     backup_baseline()
     SETTINGS["wait"] = False
     return jsonify({"ack": "Baseline successfully added"})    
@@ -348,7 +345,6 @@ def get_baseline():
     return jsonify(files)
 
 @app.route('/api/baseline_bak', methods=['GET'])
-@is_working
 @token_required
 def get_baseline_bak():
     files = []
@@ -407,32 +403,32 @@ def stop_cron():
 
 def verify():
     if len(baseline.objects()) > 0:
-        analytics.objects(type='scans').update(**{'count': [doc['count'] for doc in analytics.objects(type='scans')][0]+1})
+        analytics.objects().update(**{'scans': [doc['scans'] for doc in analytics.objects()][0]+1})
         return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, chart, CONFIG['buff_size'], SETTINGS['alert'])
     else:
         return 0
 
 def make_chart():
     item = {}
-    item['baseline'] = [doc['count'] for doc in analytics.objects(type='baseline')][0]
-    item['scans'] = [doc['count'] for doc in analytics.objects(type='scans')][0]
-    item['alerts'] = [doc['count'] for doc in analytics.objects(type='alerts')][0]
+    item['baseline'] = [doc['baseline'] for doc in analytics.objects()][0]
+    item['scans'] = [doc['scans'] for doc in analytics.objects()][0]
+    item['alerts'] = [doc['alerts'] for doc in analytics.objects()][0]
 
     chart(**item).save()        
 
 @app.route('/api/analytics', methods=['GET'])
 @token_required
 def get_analytics():
-    files = []
+    item = {}
 
     for doc in analytics.objects():
-        item = {}
-        item['type'] = doc['type']
-        item['count'] = doc['count']
+        item['baseline'] = doc['baseline']
+        item['scans'] = doc['scans']
+        item['alerts'] = doc['alerts']
+        item['encs'] = doc['encs']
 
-        files.append(item)
 
-    response = jsonify(files)
+    response = jsonify(item)
     return response
 
 @app.route('/api/syslog', methods=['GET'])
@@ -485,7 +481,7 @@ def post_removebaseline():
 
     baseline.objects(id=id).delete()
     baseline_bak.objects(file_id=id).delete()
-    analytics.objects(type='baseline').update(**{'count': len(baseline.objects())})   
+    analytics.objects().update(**{'baseline': len(baseline.objects())})   
 
     return jsonify({"ack": "Baseline removed successfully"})    
 
