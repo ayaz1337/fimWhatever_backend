@@ -14,7 +14,7 @@ from odd_jobs import compare_db, compare_db_gin, drop_collection, set_analyticsT
 from verify import scan_baseline
 import sys
 # from AES_CBC import encrypt
-import signal
+import random
 
 CONFIG = {
     'port': 5000,
@@ -167,6 +167,7 @@ def post_signup(req):
 
     pw_hash = bcrypt.generate_password_hash(password)
     user_data = {
+        'user': 'Default User',
         'email': email,
         'password': pw_hash.decode(),
         'status': 0,
@@ -204,7 +205,10 @@ def post_login(req):
             return jsonify({"error": "Incorrect email or password"}), 401
         print(user_data)
         session['sess_id'] = user_data['_id']
-        return jsonify({"role": user_data['role']})
+        lines = open('CVE.txt').read().splitlines()
+        myline =random.choice(lines)
+        print(myline)
+        return jsonify({"role": user_data['role'], "cve": myline})
 
 @app.route('/api2/logout', methods=['POST'])
 def post_logout():
@@ -500,12 +504,16 @@ def post_removeall():
         set_analyticsTozero(analytics.objects)
         return jsonify({"ack": "All baselines are removed successfully"}) 
 
+@app.route('/api2/whoami', methods=['GET'])
+@token_required
+def get_whoami():
+    user_data ={}
+    for doc in users.objects(id=session['sess_id']):
+        user_data['user'] = doc['user']
+        user_data['email'] = doc['email']
+        user_data['role'] = doc['role']
 
-def signal_handler(sig, frame):
-    if drop_collections():
-        print()
-        print("Good Bye!")
-        sys.exit(0)
+    return jsonify(user_data)
 
 
 if __name__ == '__main__':

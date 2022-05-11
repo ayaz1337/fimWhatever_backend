@@ -6,8 +6,6 @@ import os
 
 
 def notify(users, data, alertlog, analytics, alert):
-	data.pop('createdate')
-	data.pop('modifydate')
 	print(data)
 	if compare_db_kin(data, alertlog):
 		alertlog(**data).save()
