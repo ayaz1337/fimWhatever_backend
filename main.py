@@ -138,7 +138,7 @@ def token_required(f):
             return f(*args, **kwargs)    
     return decorator
 
-@app.route('/api/verifyuserlogin', methods=['GET'])
+@app.route('/api2/verifyuserlogin', methods=['GET'])
 def post_verifyuserlogin():
     if 'sess_id' in session:
         if [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'user':
@@ -149,7 +149,7 @@ def post_verifyuserlogin():
     else:
         return jsonify({"error": "Unauthorized"}), 401
 
-@app.route('/api/verifyrootlogin', methods=['GET'])
+@app.route('/api2/verifyrootlogin', methods=['GET'])
 def post_verifyrootlogin():
     if 'sess_id' in session:
         if [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'root':
@@ -159,7 +159,7 @@ def post_verifyrootlogin():
     else:
         return jsonify({"error": "Unauthorized"}), 401
 
-@app.route('/api/signup', methods=['POST'])
+@app.route('/api2/signup', methods=['POST'])
 @validate_signup
 def post_signup(req):
     email = req['email']
@@ -178,7 +178,7 @@ def post_signup(req):
     response = jsonify({"ack": "Sign Up successful, wait for approval"})
     return response
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/api2/login', methods=['POST'])
 @validate_login
 def post_login(req):
     email = req['email']
@@ -206,12 +206,12 @@ def post_login(req):
         session['sess_id'] = user_data['_id']
         return jsonify({"role": user_data['role']})
 
-@app.route('/api/logout', methods=['POST'])
+@app.route('/api2/logout', methods=['POST'])
 def post_logout():
     session.pop('sess_id')
     return jsonify()
 
-@app.route('/api/authsignup', methods=['POST'])
+@app.route('/api2/authsignup', methods=['POST'])
 @token_required
 def post_authsignup():
     req = request.get_json()
@@ -225,7 +225,7 @@ def post_authsignup():
     else:
         return jsonify({"error": "Unauthorized"}), 401
 
-@app.route('/api/users', methods=['GET'])
+@app.route('/api2/users', methods=['GET'])
 @token_required
 def get_users():
     _id = session.get('sess_id')
@@ -243,7 +243,7 @@ def get_users():
 
     return jsonify(user_data)
 
-@app.route('/api/baseline', methods=['POST'])
+@app.route('/api2/baseline', methods=['POST'])
 @is_working
 @token_required
 def post_baseline():
@@ -325,7 +325,7 @@ def backup_baseline():
             baseline_bak(**data_alt).save()
     return None
 
-@app.route('/api/baseline', methods=['GET'])
+@app.route('/api2/baseline', methods=['GET'])
 @token_required
 def get_baseline():
     files = []
@@ -344,7 +344,7 @@ def get_baseline():
 
     return jsonify(files)
 
-@app.route('/api/baseline_bak', methods=['GET'])
+@app.route('/api2/baseline_bak', methods=['GET'])
 @token_required
 def get_baseline_bak():
     files = []
@@ -364,7 +364,7 @@ def get_baseline_bak():
     
     return jsonify(files)      
 
-@app.route('/api/verify', methods=['POST'])
+@app.route('/api2/verify', methods=['POST'])
 @is_working
 @token_required
 def post_verify():
@@ -416,7 +416,7 @@ def make_chart():
 
     chart(**item).save()        
 
-@app.route('/api/analytics', methods=['GET'])
+@app.route('/api2/analytics', methods=['GET'])
 @token_required
 def get_analytics():
     item = {}
@@ -431,7 +431,7 @@ def get_analytics():
     response = jsonify(item)
     return response
 
-@app.route('/api/syslog', methods=['GET'])
+@app.route('/api2/syslog', methods=['GET'])
 @token_required
 def get_syslog():
     files = []
@@ -446,7 +446,7 @@ def get_syslog():
     response = jsonify(files)
     return response
 
-@app.route('/api/chart', methods=['GET'])
+@app.route('/api2/chart', methods=['GET'])
 @token_required
 def get_chart():
     files = []
@@ -461,7 +461,7 @@ def get_chart():
         
     return jsonify(files)
 
-@app.route('/api/removebaseline', methods=['POST'])
+@app.route('/api2/removebaseline', methods=['POST'])
 @is_working
 @token_required
 def post_removebaseline():
@@ -485,7 +485,7 @@ def post_removebaseline():
 
     return jsonify({"ack": "Baseline removed successfully"})    
 
-@app.route('/api/removeall', methods=['POST'])
+@app.route('/api2/removeall', methods=['POST'])
 @is_working
 @token_required
 def post_removeall():
