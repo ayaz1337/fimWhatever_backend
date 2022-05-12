@@ -20,11 +20,12 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, ch
         file = obj['file']
         status = baseline_bak.objects(file_id=str(obj['id'])).only('status').first().status
 
-        if status > 4:
-            continue
 
         if os.path.isfile(file):
             f = open(file, 'rb')
+            
+            if status > 4:
+                continue
 
             try:
                 while True:

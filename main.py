@@ -525,11 +525,19 @@ def get_whoami():
 @app.route('/api2/encrypt', methods=['POST'])
 @token_required
 def post_pyzipp():
+
+    verify()
+    req = request.get_json()
+
     if not baseline.objects():
         return jsonify({"error": "No baseline found"}), 400
     
-    req = request.get_json()
+    if baseline_bak.objects(file_id=req['id']).only('status').first().status == 4:
+        return jsonify({"error": "File is moved or deleted"}), 400
+        
 
+    if baseline_bak.objects(file_id=req['id']).only('status').first().status < 5 and req['mode'] == 'Decrypt':
+        return jsonify({"error": "Decryption failed"}), 400
     
     return jsonify({"ack": zip(req['id'], req['mode'], baseline, baseline_bak, analytics)})
 
