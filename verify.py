@@ -20,7 +20,10 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, ch
         file = obj['file']
         enc_status = obj['enc_status']
 
-        if os.path.isfile(file) and enc_status == 0:
+        if enc_status == 1:
+            continue
+
+        if os.path.isfile(file):
             f = open(file, 'rb')
 
             try:

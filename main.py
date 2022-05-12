@@ -13,8 +13,10 @@ import re
 from odd_jobs import compare_db, compare_db_gin, drop_collection, set_analyticsTozero
 from verify import scan_baseline
 import sys
-# from AES_CBC import encrypt
+from AES_CBC import zip
 import random
+from mongoengine import connect
+
 
 CONFIG = {
     'port': 5000,
@@ -24,6 +26,7 @@ CONFIG = {
     'secret_key': os.environ.get("SECRET_KEY"),
     'buff_size': 65536
 }
+
 
 SETTINGS = {
     'alert': "False",
@@ -77,8 +80,10 @@ class users(db.DynamicDocument):
 email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 id_regex = r'[A-Fa-f0-9]{24}'
-
-drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
+try:
+    drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
+except ServerSelectionTimeoutErro:
+    print('lol')
 
 analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0}).save()
 
@@ -304,9 +309,9 @@ def post_baseline():
 
         if(compare_db(data, baseline)):
             baseline(**data).save()
+            analytics.objects().update_one(inc__baseline=1)   
             files.append(data)
 
-    analytics.objects().update(**{'baseline': len(baseline.objects())})   
     backup_baseline()
     SETTINGS["wait"] = False
     return jsonify({"ack": "Baseline successfully added"})    
@@ -407,7 +412,7 @@ def stop_cron():
 
 def verify():
     if len(baseline.objects()) > 0:
-        analytics.objects().update(**{'scans': [doc['scans'] for doc in analytics.objects()][0]+1})
+        analytics.objects().update_one(inc__scans=1)
         return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, chart, CONFIG['buff_size'], SETTINGS['alert'])
     else:
         return 0
@@ -485,7 +490,7 @@ def post_removebaseline():
 
     baseline.objects(id=id).delete()
     baseline_bak.objects(file_id=id).delete()
-    analytics.objects().update(**{'baseline': len(baseline.objects())})   
+    analytics.objects().update_one(dec__baseline=1)   
 
     return jsonify({"ack": "Baseline removed successfully"})    
 
@@ -515,8 +520,17 @@ def get_whoami():
 
     return jsonify(user_data)
 
+@app.route('/api2/encrypt', methods=['POST'])
+@token_required
+def post_pyzipp():
+    req = request.get_json()
+    if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file):
+        return jsonify({"error": "File is moved or deleted"}), 400
+    
+    return jsonify({"ack": zip(req['id'], req['mode'], baseline, baseline_bak, analytics)})
+
 
 if __name__ == '__main__':
-    app.run(host=CONFIG['host'], port=CONFIG['port'], debug=True)
+    app.run(host=CONFIG['host'], port=CONFIG['port'], debug=True, use_reloader=True)
 
 
