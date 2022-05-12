@@ -1,3 +1,4 @@
 ignite.sh
 flask_session/
 __pycache__/
+.secret/
