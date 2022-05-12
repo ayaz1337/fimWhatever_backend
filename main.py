@@ -18,6 +18,7 @@ import random
 from mongoengine import connect
 
 
+
 CONFIG = {
     'port': 5000,
     'host': '0.0.0.0',
@@ -37,7 +38,6 @@ SETTINGS = {
 }
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = CONFIG['secret_key']
 app.config['SESSION_TYPE'] = "filesystem"
 app.config['SESSION_PERMANENT'] = False
@@ -80,13 +80,19 @@ class users(db.DynamicDocument):
 email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 id_regex = r'[A-Fa-f0-9]{24}'
-try:
-    drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
-except ServerSelectionTimeoutErro:
-    print('lol')
 
-analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0}).save()
 
+
+@app.before_first_request
+def before_first_request_func():
+    print("This function will run once")
+    try:
+        drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
+    except ServerSelectionTimeoutErro:
+        print('lol')
+    else: 
+        print('ok')    
+    analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0}).save()
 
 def is_working(f):
     @wraps(f)
@@ -283,7 +289,7 @@ def post_baseline():
             SETTINGS["wait"] = False
             return jsonify({"error": "Invalid file or directory"}), 400
     base = list(set(base))                
-
+    
     for file in base:
         print(file)
         f = open(file, 'rb')
@@ -303,13 +309,12 @@ def post_baseline():
             'createdate': os.path.getctime(file),
             'modifydate': os.path.getmtime(file),
             'hash': sha256.hexdigest(),
-            'status': 1,
-            'enc_status': 0
+            'status': 1
         }
 
         if(compare_db(data, baseline)):
             baseline(**data).save()
-            analytics.objects().update_one(inc__baseline=1)   
+            analytics.objects().update_one(inc__baseline=1)
             files.append(data)
 
     backup_baseline()
@@ -326,7 +331,6 @@ def backup_baseline():
         data_alt['hash'] = obj['hash']
         data_alt['panel_id'] = count
         data_alt['status'] = 2
-        data_alt['enc_status'] = 0
         data_alt['createdate'] = obj['createdate']
         data_alt['modifydate'] = obj['modifydate']
         
@@ -347,7 +351,6 @@ def get_baseline():
         item['modifydate'] = doc['modifydate']
         item['hash'] = doc['hash']
         item['status'] = doc['status']
-        item['enc_status'] = doc['enc_status']
 
         files.append(item)
 
@@ -365,7 +368,6 @@ def get_baseline_bak():
         item['file_size'] = doc['file_size']
         item['hash'] = doc['hash']
         item['status'] = doc['status']
-        item['enc_status'] = doc['enc_status']
         item['createdate'] = datetime.fromtimestamp(doc['createdate']).strftime('%d-%b-%Y %H:%M:%S')
         item['modifydate'] = datetime.fromtimestamp(doc['modifydate']).strftime('%d-%b-%Y %H:%M:%S')
         
@@ -377,6 +379,9 @@ def get_baseline_bak():
 @is_working
 @token_required
 def post_verify():
+    if not baseline.objects():
+        return jsonify({"error": "No baseline found"}), 400
+
     req = request.get_json()
     files = []
     SETTINGS['alert'] = req['alert']
@@ -393,9 +398,6 @@ def post_verify():
     else:
         stop_cron()
 
-    if files == 0:
-        return jsonify({"error": "No baseline found"}), 400
-    
     return jsonify({"ack": "Configuration complete"}) 
 
 def start_cron():
@@ -523,9 +525,11 @@ def get_whoami():
 @app.route('/api2/encrypt', methods=['POST'])
 @token_required
 def post_pyzipp():
+    if not baseline.objects():
+        return jsonify({"error": "No baseline found"}), 400
+    
     req = request.get_json()
-    if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file):
-        return jsonify({"error": "File is moved or deleted"}), 400
+
     
     return jsonify({"ack": zip(req['id'], req['mode'], baseline, baseline_bak, analytics)})
 

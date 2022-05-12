@@ -18,9 +18,9 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, ch
     for obj in baseline.objects():
         sha256 = hashlib.sha256()
         file = obj['file']
-        enc_status = obj['enc_status']
+        status = baseline_bak.objects(file_id=str(obj['id'])).only('status').first().status
 
-        if enc_status == 1:
+        if status > 4:
             continue
 
         if os.path.isfile(file):
