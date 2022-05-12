@@ -14,7 +14,7 @@ def compare_db(data, db):
 
 def compare_db_gin(data, db):
     save = False
-    doc = db.objects(Q(file=data['file']) &Q(file_id=data['file_id']))
+    doc = db.objects(Q(file=data['file']) & Q(file_id=data['file_id']))
     
     if not doc :
         save = True
