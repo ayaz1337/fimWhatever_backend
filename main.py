@@ -11,7 +11,7 @@ from flask_session import Session
 from functools import wraps
 import re
 from odd_jobs import compare_db, compare_db_gin, drop_collection, set_analyticsTozero
-from verify import scan_baseline
+from verify import scan_baseline, quick_scan
 import sys
 from AES_CBC import zip
 import random
@@ -415,7 +415,7 @@ def stop_cron():
 def verify():
     if len(baseline.objects()) > 0:
         analytics.objects().update_one(inc__scans=1)
-        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, chart, CONFIG['buff_size'], SETTINGS['alert'])
+        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'])
     else:
         return 0
 
@@ -597,6 +597,25 @@ def post_updateemail():
     users.objects(id=session['sess_id']).update_one(set__email=new_email)
     
     return jsonify({"ack": "Email successfully updated"})
+
+@app.route('/api2/quickscan', methods=['POST'])
+@token_required
+def post_quickscan():
+    req = request.get_json()
+
+    if not baseline.objects():
+        return jsonify({"error": "No baseline found"}), 400
+
+    if baseline_bak.objects(file_id=req['id']).only('status').first().status > 4:
+        return jsonify({"error": "File is encrypted, can not perform quickscan"}), 400
+
+    item = quick_scan(req['id'], baseline, baseline_bak, syslog, analytics, alertlog, BUFF_SIZE=CONFIG['buff_size'])
+    analytics.objects().update_one(inc__scans=1)
+    make_chart()
+
+    if len(item) > 0:
+        return jsonify({"ack": "Quickscan complete"})    
+
 
 
 if __name__ == '__main__':
