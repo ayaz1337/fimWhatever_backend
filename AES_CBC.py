@@ -34,8 +34,8 @@ def zip(id, enc, db, db_bak, anal):
         with open(file, 'wb') as f:
             f.write(encrypted_data)
 
-        anal.objects().update_one(inc__encs=1)
         db_bak.objects(file_id=id).update_one(inc__status=5)
+        anal.objects().update_one(set__encs=len(db_bak.objects(status__gt=4)))
         os.system("echo {} | sudo -S chown root {}".format(os.environ.get("SUDO_PASSWD"), file))
         return "Encryption complete"    
     
@@ -48,8 +48,7 @@ def zip(id, enc, db, db_bak, anal):
         with open(file, 'wb') as f:
             f.write(decrypted_data.rstrip(b'0'))
 
-        anal.objects().update_one(dec__encs=1)
         db_bak.objects(file_id=id).update_one(dec__status=5)
-
+        anal.objects().update_one(set__encs=len(db_bak.objects(status__gt=4)))
 
         return "Decryption complete"

@@ -44,5 +44,3 @@ def drop_collection(arr):
 
 def set_analyticsTozero(anal):
     anal.update(**{'baseline': 0, 'alerts': 0, 'scans': 0, 'encs': 0})   
-
-

@@ -53,6 +53,7 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, ch
         
             baseline_bak.objects(file_id=str(obj.id)).update(**data)
             items['logs'].append(data)
+            analytics.objects().update_one(set__encs=len(baseline_bak.objects(status__gt=4)))
 
             if data['status'] == 3:
                 notify(users, data, alertlog, analytics, alert)
@@ -70,6 +71,7 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, ch
             }
 
             baseline_bak.objects(file_id=str(obj.id)).update(**data)
+            analytics.objects().update_one(set__encs=len(baseline_bak.objects(status__gt=4)))
             items['logs'].append(data)
         
     syslog(**items).save()

@@ -525,21 +525,78 @@ def get_whoami():
 @app.route('/api2/encrypt', methods=['POST'])
 @token_required
 def post_pyzipp():
-
-    verify()
     req = request.get_json()
 
     if not baseline.objects():
         return jsonify({"error": "No baseline found"}), 400
+
     
     if baseline_bak.objects(file_id=req['id']).only('status').first().status == 4:
         return jsonify({"error": "File is moved or deleted"}), 400
         
 
-    if baseline_bak.objects(file_id=req['id']).only('status').first().status < 5 and req['mode'] == 'Decrypt':
-        return jsonify({"error": "Decryption failed"}), 400
+    if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file) and req['mode'] == 'Decrypt':
+        return jsonify({"error": "Decryption failed, run a scan and try again"}), 400
+
+    try:
+        response = zip(req['id'], req['mode'], baseline, baseline_bak, analytics)
+    except(PermissionError):
+        baseline_bak.objects(file_id=req['id']).update_one(inc__status=5)
+        analytics.objects().update_one(inc__encs=1)
+        return ({"error": "File is already encrypted"}), 400
+    else:
+        return jsonify({"ack": response})
+
+@app.route('/api2/updatepassword', methods=['POST'])
+@token_required
+def post_updatepassword():
+    req = request.get_json()
+    if not req:
+        return jsonify({"error": "Icorrect password format"}), 400
+
+    if not req['pass'] or not req['confirm_pass']:
+        return jsonify({"error": "Icorrect password format"}), 400
+
+    if not re.fullmatch(pw_regex, req['pass']):
+        return jsonify({"error": "Icorrect password format"}), 400
+
+    if not req['confirm_pass'] == req['pass']:    
+        return jsonify({"error": "Passwords do not match"}), 400
+
+    new_pw_hash = bcrypt.generate_password_hash(req['pass'])
+    old_pw_hash = users.objects(id=session['sess_id']).only('password').first().password
+
+    if bcrypt.check_password_hash(old_pw_hash, req['pass']):
+        return jsonify({"error": "Password cannot be same as the old one"}), 400
+
+    users.objects(id=session['sess_id']).update_one(set__password=new_pw_hash.decode())
+
+    return jsonify({"ack": "Password successfully updated"})
+
+@app.route('/api2/updateemail', methods=['POST'])
+@token_required
+def post_updateemail():
+    req = request.get_json()
     
-    return jsonify({"ack": zip(req['id'], req['mode'], baseline, baseline_bak, analytics)})
+    if not req:
+        return jsonify({"error": "Icorrect email format"}), 400
+
+    if req['email'] == '':
+        return jsonify({"error": "Icorrect email format"}), 400
+
+    new_email = req['email']
+    
+    if users.objects(email=new_email):
+        return jsonify({"error": "User alread exist with this email"}), 400
+
+    old_email = users.objects(id=session['sess_id']).only('email').first().email
+    if old_email == new_email:
+        return jsonify({"error": "Email cannot be same as the old one"}), 400
+
+
+    users.objects(id=session['sess_id']).update_one(set__email=new_email)
+    
+    return jsonify({"ack": "Email successfully updated"})
 
 
 if __name__ == '__main__':
