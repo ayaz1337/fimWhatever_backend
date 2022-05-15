@@ -143,7 +143,7 @@ def validate_signup(f):
 def token_required(f):
     @wraps(f)
     def decorator(*args, **kwargs):
-        if 'sess_id' not in session:
+        if 'sess_id' not in session or users.objects(id=session['sess_id']).only('status').first().status != 1:
             return jsonify({"error": "Unauthorized"}), 401
         else:
             return f(*args, **kwargs)    
@@ -152,10 +152,10 @@ def token_required(f):
 @app.route('/api2/verifyuserlogin', methods=['GET'])
 def post_verifyuserlogin():
     if 'sess_id' in session:
-        if [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'user':
-    
+        if users.objects(id=session['sess_id']).only('status').first().status == 1 and users.objects(id=session['sess_id']).only('role').first().role == 'user':
             return({"ack": "authorized"})
-        elif [doc['role'] for doc in users.objects(id=session.get('sess_id'))][0] == 'root':
+
+        elif users.objects(id=session['sess_id']).only('role').first().role == 'root':
             return jsonify({"error": "Unauthorized"}), 401
     else:
         return jsonify({"error": "Unauthorized"}), 401
@@ -234,9 +234,9 @@ def post_authsignup():
     user = req['email']
     status = req['status']
     
-    if [doc['role'] for doc in users.objects(id=_id)][0] == 'root' and [doc['email'] for doc in users.objects(id=_id)][0] != user:
-        users.objects(email=user).update(**{'status': status})
-        return jsonify({"status": [doc['status'] for doc in users.objects(email=user)][0]})
+    if users.objects(id=_id).only('role').first().role == 'root':
+        users.objects(email=user).update_one(set__status=status)
+        return jsonify({"ack": "User status successfully updated"})
     else:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -246,14 +246,15 @@ def get_users():
     _id = session.get('sess_id')
     user_data = []
 
-    if [doc['role'] for doc in users.objects(id=_id)][0] != 'root':
+    if users.objects(id=_id).only('role').first().role != 'root':
         return jsonify({"error": "Unauthorized"}), 401
 
-    for doc in users.objects(role='user'):
+    for doc in users.objects(role__ne='root'):
         user = {}
         user['email'] = doc['email']
         user['role'] = doc['role']
         user['status'] = doc['status']
+        user['user'] = doc['user']
         user_data.append(user)
 
     return jsonify(user_data)
