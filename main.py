@@ -539,6 +539,9 @@ def post_pyzipp():
     if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file) and req['mode'] == 'Decrypt':
         return jsonify({"error": "Decryption failed, run a scan and try again"}), 400
 
+    if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file) and req['mode'] == 'Encrypt':
+        return jsonify({"error": "Encryption failed, run a scan and try again"}), 400    
+
     try:
         response = zip(req['id'], req['mode'], baseline, baseline_bak, analytics)
     except(PermissionError):

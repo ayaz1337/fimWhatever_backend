@@ -122,12 +122,6 @@ def quick_scan(id, baseline, baseline_bak, syslog, analytics, alertlog, BUFF_SIZ
 
     else:
         data = {
-            'file_id': id,
-            'file': file,
-            'file_size': obj['file_size'],
-            'createdate': obj['createdate'],
-            'modifydate': obj['modifydate'],
-            'hash': db_hash,
             'status': 4
         }
 
