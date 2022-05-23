@@ -19,12 +19,13 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
         sha256 = hashlib.sha256()
         file = obj['file']
         status = baseline_bak.objects(file_id=str(obj['id'])).only('status').first().status
+        severity = baseline_bak.objects(file_id=str(obj['id'])).only('severity').first().severity
 
 
         if os.path.isfile(file):
             f = open(file, 'rb')
             
-            if status > 4:
+            if status > 4 or severity == 0:
                 continue
 
             try:

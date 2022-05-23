@@ -92,7 +92,7 @@ def before_first_request_func():
         print('lol')
     else: 
         print('ok')    
-    analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0}).save()
+    analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0, 'risk': 0}).save()
 
 def is_working(f):
     @wraps(f)
@@ -310,7 +310,8 @@ def post_baseline():
             'createdate': os.path.getctime(file),
             'modifydate': os.path.getmtime(file),
             'hash': sha256.hexdigest(),
-            'status': 1
+            'status': 1,
+            'severity': 0
         }
 
         if(compare_db(data, baseline)):
@@ -334,6 +335,7 @@ def backup_baseline():
         data_alt['status'] = 2
         data_alt['createdate'] = obj['createdate']
         data_alt['modifydate'] = obj['modifydate']
+        data_alt['severity'] = 0
         
         if compare_db_gin(data_alt, baseline_bak):
             baseline_bak(**data_alt).save()
@@ -438,6 +440,7 @@ def get_analytics():
         item['scans'] = doc['scans']
         item['alerts'] = doc['alerts']
         item['encs'] = doc['encs']
+        item['risk'] = doc['risk']
 
 
     response = jsonify(item)
@@ -621,6 +624,27 @@ def post_quickscan():
         return jsonify({"ack": "Quickscan complete"})    
 
 
+@app.route('/api2/setseverity', methods=['POST'])
+@token_required
+def post_setseverity():
+    if not users.objects(id=session['sess_id']).only('role').first().role == 'root':
+        return jsonify({"error": "Unauthorized"}), 401
+
+    req = request.get_json()
+
+    risk = int(req['risk'])
+    print(risk)
+    analytics.objects().update_one(set__risk=risk)
+
+    if risk == 0:
+        baseline_bak.objects().update(set__severity=0)
+    if risk == 1:
+        baseline_bak.objects().update(set__severity=1)
+        baseline_bak.objects(file__regex= '\.txt$').update(set__severity=0)
+    if risk == 2:
+        baseline_bak.objects().update(set__severity=1)
+
+    return jsonify()
 
 if __name__ == '__main__':
     app.run(host=CONFIG['host'], port=CONFIG['port'], debug=True, use_reloader=True)
