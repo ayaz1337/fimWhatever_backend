@@ -7,7 +7,7 @@ from odd_jobs import compare_hash
 from alert import notify
 
 
-def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BUFF_SIZE, alert):
+def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BUFF_SIZE, alert, auto_enc):
     items = {
         'scan_dnt': datetime.fromtimestamp(time()).strftime('%d-%b-%Y %H:%M:%S'),
         'logs': []
@@ -57,7 +57,7 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
             analytics.objects().update_one(set__encs=len(baseline_bak.objects(status__gt=4)))
 
             if data['status'] == 3:
-                notify(users, data, alertlog, analytics, alert)
+                notify(users, data, alertlog, analytics, alert, auto_enc, baseline, baseline_bak)
 
 
         else:

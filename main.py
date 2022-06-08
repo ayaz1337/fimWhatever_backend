@@ -33,6 +33,7 @@ SETTINGS = {
     'alert': "False",
     "manual": "False",
     "cron": "False",
+    "auto_enc": False,
     "interval": 86400,
     "wait": False
 }
@@ -391,6 +392,7 @@ def post_verify():
     SETTINGS['manual'] = req['manual']
     SETTINGS['cron'] = req['cron']
     SETTINGS['interval'] = int(req['interval'])
+    SETTINGS['auto_enc'] = req['auto_enc']
 
     if SETTINGS['manual'] == "True" or SETTINGS['manual']:
         files = verify()
@@ -418,7 +420,7 @@ def stop_cron():
 def verify():
     if len(baseline.objects()) > 0:
         analytics.objects().update_one(inc__scans=1)
-        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'])
+        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'], SETTINGS['auto_enc'])
     else:
         return 0
 
@@ -537,7 +539,6 @@ def post_pyzipp():
     
     if baseline_bak.objects(file_id=req['id']).only('status').first().status == 4:
         return jsonify({"error": "File is moved or deleted"}), 400
-        
 
     if not os.path.exists(baseline.objects(id=req['id']).only('file').first().file) and req['mode'] == 'Decrypt':
         return jsonify({"error": "Decryption failed, run a scan and try again"}), 400

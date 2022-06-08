@@ -3,15 +3,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from odd_jobs import compare_db_kin
 import os
+from AES_CBC import zip
 
 
-def notify(users, data, alertlog, analytics, alert):
+def notify(users, data, alertlog, analytics, alert, auto_enc, baseline, baseline_bak):
 	print(data)
 	if compare_db_kin(data, alertlog):
 		alertlog(**data).save()
 		analytics.objects().update(**{'alerts': len(alertlog.objects())})
 		if alert:
 			send_alert(data, users)
+			if auto_enc:
+				zip(data['file_id'], "Encrypt", baseline, baseline_bak, analytics)
 			print('Email Sent!')
 
 def send_alert(data, users):
