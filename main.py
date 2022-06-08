@@ -586,10 +586,13 @@ def post_updateemail():
     req = request.get_json()
     
     if not req:
-        return jsonify({"error": "Icorrect email format"}), 400
+        return jsonify({"error": "Incorrect email format"}), 400
 
     if req['email'] == '':
-        return jsonify({"error": "Icorrect email format"}), 400
+        return jsonify({"error": "Incorrect email format"}), 400
+
+    if not re.fullmatch(email_regex, req['email']):
+        return jsonify({"error": "Incorrect email format"}), 400
 
     new_email = req['email']
     
