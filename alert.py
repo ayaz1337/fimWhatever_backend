@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from odd_jobs import compare_db_kin
 import os
 from AES_CBC import zip
+from datetime import datetime
 
 
 def notify(users, data, alertlog, analytics, alert, auto_enc, baseline, baseline_bak):
@@ -26,7 +27,7 @@ def send_alert(data, users):
 
 	f = open("alert.txt", "r")
 	temp = f.read()
-	html2 = temp.format(file_id=data['file_id'])
+	html2 = temp.format(file_id=data['file_id'], crnt_time=datetime.now().strftime("%d-%b-%Y %H:%M:%S").upper()+", IN")
 
 	part1 = MIMEText(html2, 'html')
 	part2 = MIMEText(html2, 'html')

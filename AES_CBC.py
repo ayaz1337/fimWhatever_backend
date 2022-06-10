@@ -10,11 +10,11 @@ def padding(file):
         file = file + b'0'        
     return file
 
-def zip(id, enc, db, db_bak, anal):
-    secret_password = id.encode()
+def zip(id, enc, db, db_bak, anal, ks):
+    secret_password = ks.objects().only('MASTER_KEY').first().MASTER_KEY.encode()
     key = hashlib.sha256(secret_password).digest()
     mode = AES.MODE_CBC
-    IV = id[0:16].encode()
+    IV = ks.objects().only('IV').first().IV.encode()
     print(IV)
     cipher = AES.new(key, mode, IV)
     file = db.objects(id=id).only('file').first().file

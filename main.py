@@ -76,6 +76,8 @@ class chart(db.DynamicDocument):
 class users(db.DynamicDocument):
     pass
 
+class keys(db.DynamicDocument):
+    pass
 
 
 email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
@@ -547,7 +549,7 @@ def post_pyzipp():
         return jsonify({"error": "Encryption failed, run a scan and try again"}), 400    
 
     try:
-        response = zip(req['id'], req['mode'], baseline, baseline_bak, analytics)
+        response = zip(req['id'], req['mode'], baseline, baseline_bak, analytics, keys)
     except(PermissionError):
         baseline_bak.objects(file_id=req['id']).update_one(inc__status=5)
         analytics.objects().update_one(inc__encs=1)
