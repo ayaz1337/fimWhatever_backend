@@ -5,9 +5,13 @@ import os
 import glob
 from odd_jobs import compare_hash
 from alert import notify
+from odd_jobs import compare_db_kin
+from AES_CBC import zip
+from threading import Thread
 
 
-def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BUFF_SIZE, alert, auto_enc):
+
+def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BUFF_SIZE, alert, auto_enc, keys):
     items = {
         'scan_dnt': datetime.fromtimestamp(time()).strftime('%d-%b-%Y %H:%M:%S'),
         'logs': []
@@ -36,10 +40,10 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
                     sha256.update(block)
             finally:
                 f.close()
-            print('file: ' + obj['file'])
-            print('hash_db: ' + obj['hash'])
-            print('hash_fs: ' + sha256.hexdigest())
-            print()
+            # print('file: ' + obj['file'])
+            # print('hash_db: ' + obj['hash'])
+            # print('hash_fs: ' + sha256.hexdigest())
+            # print()
 
             data = {
                 'file_id': str(obj.id),
@@ -57,7 +61,14 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
             analytics.objects().update_one(set__encs=len(baseline_bak.objects(status__gt=4)))
 
             if data['status'] == 3:
-                notify(users, data, alertlog, analytics, alert, auto_enc, baseline, baseline_bak)
+                if compare_db_kin(data, alertlog):
+                    if auto_enc:
+                        zip(data['file_id'], "Encrypt", baseline, baseline_bak, analytics, keys)
+                    if alert:
+                        Thread(target=notify, args=(users, data, alertlog, analytics, baseline, baseline_bak)).start()    
+                        # notify(users, data, alertlog, analytics, baseline, baseline_bak)
+                        
+
 
 
         else:

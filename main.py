@@ -422,7 +422,7 @@ def stop_cron():
 def verify():
     if len(baseline.objects()) > 0:
         analytics.objects().update_one(inc__scans=1)
-        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'], SETTINGS['auto_enc'])
+        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'], SETTINGS['auto_enc'], keys)
     else:
         return 0
 
