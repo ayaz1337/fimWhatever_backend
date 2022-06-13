@@ -229,13 +229,30 @@ def post_login(req):
         lines = open('CVE.txt').read().splitlines()
         myline =random.choice(lines)
         log = open("user_log.txt", "a")
-        log.write("{id}\t{email}\t{role}\t{action}\t{time}\n".format(id=user_data['_id'], email=user_data['email'], 
-        role=user_data['role'], action="login", time=datetime.now().strftime("%d-%b-%Y %H:%M:%S").upper()))
+        log.write("{id}\t{role}\t{action}\t{time}\t{email}\n".format(
+            id=user_data['_id'], 
+            email=user_data['email'], 
+            role=user_data['role'], 
+            action="login", 
+            time=datetime.now().strftime("%d-%b-%Y %H:%M:%S").upper()
+            )
+        )
         return jsonify({"role": user_data['role'], "cve": myline})
 
 @app.route('/api2/logout', methods=['POST'])
 def post_logout():
+    log = open("user_log.txt", "a")
+    log.write("{id}\t{role}\t{action}\t{time}\t{email}\n".format(
+        id=session.get('sess_id'), 
+        email=users.objects(id=session.get('sess_id')).only('email').first().email,
+        role=users.objects(id=session.get('sess_id')).only('role').first().role,
+        action="logout",
+        time=datetime.now().strftime("%d-%b-%Y %H:%M:%S").upper()
+        )
+    )
+
     session.pop('sess_id')
+
     return jsonify()
 
 @app.route('/api2/authsignup', methods=['POST'])
