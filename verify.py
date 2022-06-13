@@ -60,13 +60,8 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
                 if compare_db_kin(data, alertlog):
                     if auto_enc:
                         zip(data['file_id'], "Encrypt", baseline, baseline_bak, analytics, keys)
-                    if alert:
-                        Thread(target=notify, args=(users, data, alertlog, analytics, baseline, baseline_bak)).start()    
-                        # notify(users, data, alertlog, analytics, baseline, baseline_bak)
-                        
-
-
-
+                    Thread(target=notify, args=(users, data, alertlog, analytics, baseline, baseline_bak, alert)).start()    
+                    # notify(users, data, alertlog, analytics, baseline, baseline_bak)
         else:
             data = {
                 'file_id': str(obj.id),
@@ -81,7 +76,6 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
             baseline_bak.objects(file_id=str(obj.id)).update(**data)
             analytics.objects().update_one(set__encs=len(baseline_bak.objects(status__gt=4)))
             items['logs'].append(data)
-        
     syslog(**items).save()
 
     return items

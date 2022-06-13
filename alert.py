@@ -7,10 +7,11 @@ from AES_CBC import zip
 from datetime import datetime
 
 
-def notify(users, data, alertlog, analytics, baseline, baseline_bak):
+def notify(users, data, alertlog, analytics, baseline, baseline_bak, alert):
 	alertlog(**data).save()
 	analytics.objects().update(**{'alerts': len(alertlog.objects())})
-	send_alert(data, users)
+	if alert:
+		send_alert(data, users)
 
 def send_alert(data, users):
 	msg = MIMEMultipart('alternative')

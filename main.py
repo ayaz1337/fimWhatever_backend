@@ -422,7 +422,6 @@ def post_verify():
 
     if SETTINGS['manual'] == "True" or SETTINGS['manual']:
         files = verify()
-        make_chart()
     
     if SETTINGS['cron'] == "True" or SETTINGS['cron']:
         start_cron()
@@ -439,13 +438,13 @@ def start_cron():
 
 def stop_cron():
     if(cron.get_job('verify')):
-        make_chart()
         cron.remove_job('verify')
 
 def verify():
     if len(baseline.objects()) > 0:
         analytics.objects().update_one(inc__scans=1)
-        return scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'], SETTINGS['auto_enc'], keys)
+        scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, CONFIG['buff_size'], SETTINGS['alert'], SETTINGS['auto_enc'], keys)
+        make_chart()
     else:
         return 0
 
@@ -656,8 +655,6 @@ def post_quickscan():
 @app.route('/api2/setseverity', methods=['POST'])
 @token_required
 def post_setseverity():
-    if not users.objects(id=session['sess_id']).only('role').first().role == 'root':
-        return jsonify({"error": "Unauthorized"}), 401
 
     req = request.get_json()
 
