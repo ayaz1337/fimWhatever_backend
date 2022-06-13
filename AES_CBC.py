@@ -15,7 +15,6 @@ def zip(id, enc, db, db_bak, anal, ks):
     key = hashlib.sha256(secret_password).digest()
     mode = AES.MODE_CBC
     IV = ks.objects().only('IV').first().IV.encode()
-    print(IV)
     cipher = AES.new(key, mode, IV)
     file = db.objects(id=id).only('file').first().file
 
@@ -30,7 +29,6 @@ def zip(id, enc, db, db_bak, anal, ks):
     
         padded_data = padding(data)
         encrypted_data = cipher.encrypt(padded_data)
-        print(encrypted_data)
         with open(file, 'wb') as f:
             f.write(encrypted_data)
 

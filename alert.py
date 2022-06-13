@@ -11,14 +11,12 @@ def notify(users, data, alertlog, analytics, baseline, baseline_bak):
 	alertlog(**data).save()
 	analytics.objects().update(**{'alerts': len(alertlog.objects())})
 	send_alert(data, users)
-	print('Email Sent!')
 
 def send_alert(data, users):
 	msg = MIMEMultipart('alternative')
 	msg['Subject'] = "Alert!"
 	msg['From'] = [doc['email'] for doc in users.objects(role='root')][0]
 	msg['To'] = ",".join([doc['email'] for doc in users.objects(status__ne=0)])
-	print(msg['To'])
 
 	f = open("alert.txt", "r")
 	temp = f.read()

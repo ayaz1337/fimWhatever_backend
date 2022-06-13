@@ -40,10 +40,6 @@ def scan_baseline(users, baseline, baseline_bak, alertlog, syslog, analytics, BU
                     sha256.update(block)
             finally:
                 f.close()
-            # print('file: ' + obj['file'])
-            # print('hash_db: ' + obj['hash'])
-            # print('hash_fs: ' + sha256.hexdigest())
-            # print()
 
             data = {
                 'file_id': str(obj.id),

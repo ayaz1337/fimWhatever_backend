@@ -100,14 +100,10 @@ def favicon():
     
 @app.before_first_request
 def before_first_request_func():
-    print("This function will run once")
     try:
         drop_collection([baseline.objects, baseline_bak.objects, analytics.objects, syslog.objects, chart.objects, alertlog.objects])
-    except ServerSelectionTimeoutErro:
-        print('lol')
-    else: 
-        print('ok')    
-    analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0, 'risk': 0}).save()
+    finally:   
+        analytics(**{'baseline': 0, 'alerts': 0, 'encs': 0, 'scans': 0, 'risk': 0}).save()
 
 def is_working(f):
     @wraps(f)
@@ -229,11 +225,12 @@ def post_login(req):
     if user_data['status'] == 1:
         if not bcrypt.check_password_hash(user_data['password'], password):
             return jsonify({"error": "Incorrect email or password"}), 401
-        print(user_data)
         session['sess_id'] = user_data['_id']
         lines = open('CVE.txt').read().splitlines()
         myline =random.choice(lines)
-        print(myline)
+        log = open("user_log.txt", "a")
+        log.write("{id}\t{email}\t{role}\t{action}\t{time}\n".format(id=user_data['_id'], email=user_data['email'], 
+        role=user_data['role'], action="login", time=datetime.now().strftime("%d-%b-%Y %H:%M:%S").upper()))
         return jsonify({"role": user_data['role'], "cve": myline})
 
 @app.route('/api2/logout', methods=['POST'])
@@ -283,7 +280,6 @@ def post_baseline():
     if not req:
         SETTINGS["wait"] = False
         return jsonify({"error": "Invalid input"}), 400
-    print(req['paths'])
     if not req['paths']:
         SETTINGS["wait"] = False
         return jsonify({"error": "Invalid input"}), 400
@@ -307,7 +303,6 @@ def post_baseline():
     base = list(set(base))                
     
     for file in base:
-        print(file)
         f = open(file, 'rb')
         try:
             sha256 = hashlib.sha256()
@@ -427,7 +422,6 @@ def start_cron():
 
 def stop_cron():
     if(cron.get_job('verify')):
-        print('shutting down')
         make_chart()
         cron.remove_job('verify')
 
@@ -651,7 +645,6 @@ def post_setseverity():
     req = request.get_json()
 
     risk = int(req['risk'])
-    print(risk)
     analytics.objects().update_one(set__risk=risk)
 
     if risk == 0:
