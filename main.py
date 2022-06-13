@@ -38,7 +38,7 @@ SETTINGS = {
     "wait": False
 }
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='build', static_url_path='/')
 app.config['SECRET_KEY'] = CONFIG['secret_key']
 app.config['SESSION_TYPE'] = "filesystem"
 app.config['SESSION_PERMANENT'] = False
@@ -85,7 +85,19 @@ pw_regex = r'[A-Za-z0-9@#$%^&+=]{4,}'
 id_regex = r'[A-Fa-f0-9]{24}'
 
 
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
+@app.errorhandler(404)
+def not_found(err):
+    return app.send_static_file('index.html')
+
+@app.route('/favicon.ico')
+def favicon():    
+    return app.send_static_file('favicon.ico')
+
+    
 @app.before_first_request
 def before_first_request_func():
     print("This function will run once")
