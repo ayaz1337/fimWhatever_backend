@@ -16,6 +16,7 @@ import sys
 from AES_CBC import zip
 import random
 from mongoengine import connect
+from requests import get
 
 
 
@@ -670,6 +671,12 @@ def post_setseverity():
         baseline_bak.objects().update(set__severity=1)
 
     return jsonify()
+
+@app.route('/api2/cve/<cve>', methods=['GET'])
+def get_cve(cve):
+        return get(f'https://cve.circl.lu/api/cve/{cve}').content
+
+
 
 if __name__ == '__main__':
     app.run(host=CONFIG['host'], port=CONFIG['port'], debug=True, use_reloader=True)

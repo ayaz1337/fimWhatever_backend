@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.6c3c005d.css",
-    "main.js": "/static/js/main.e41e7c36.js",
+    "main.css": "/static/css/main.21a2d52b.css",
+    "main.js": "/static/js/main.1d6cf37f.js",
     "static/media/wp1848364-security-wallpapers.jpg": "/static/media/wp1848364-security-wallpapers.ed68d532f8b13712f5a0.jpg",
     "static/media/A_-wAhRYnWQscAAAAAAAAAAABkARQnAQ.png": "/static/media/A_-wAhRYnWQscAAAAAAAAAAABkARQnAQ.fd8cd9c336f5c01828d8.png",
     "static/media/hoyolab.jpeg": "/static/media/hoyolab.fd29092a00b054d7882b.jpeg",
@@ -12,11 +12,11 @@
     "static/media/security-update.svg": "/static/media/security-update.8b37bdb3d3a8e720bdbf1d8fb7b0af20.svg",
     "static/media/security-identify.svg": "/static/media/security-identify.86c1fde3425efe23726c692b25a70814.svg",
     "index.html": "/index.html",
-    "main.6c3c005d.css.map": "/static/css/main.6c3c005d.css.map",
-    "main.e41e7c36.js.map": "/static/js/main.e41e7c36.js.map"
+    "main.21a2d52b.css.map": "/static/css/main.21a2d52b.css.map",
+    "main.1d6cf37f.js.map": "/static/js/main.1d6cf37f.js.map"
   },
   "entrypoints": [
-    "static/css/main.6c3c005d.css",
-    "static/js/main.e41e7c36.js"
+    "static/css/main.21a2d52b.css",
+    "static/js/main.1d6cf37f.js"
   ]
 }
